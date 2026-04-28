@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام أحمد المطور - النسخة السحابية ☁️</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzgP3hQUhruUk1aLn3W42un0G3pUXjwTU",
+            authDomain: "ahmed-clinics-6b9ef.firebaseapp.com",
+            projectId: "ahmed-clinics-6b9ef",
+            storageBucket: "ahmed-clinics-6b9ef.firebasestorage.app",
+            messagingSenderId: "755653378017",
+            appId: "1:755653378017:web:b08bf729934_ca0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'ahmed-clinics-v3'; 
+
+        window.firebaseDB = db;
+        window.firebaseAuth = auth;
+        window.appId = appId;
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;700;900&display=swap');
+        body { font-family: 'Noto Sans Arabic', sans-serif; background-color: #f8fafc; }
+        .status-pill { padding: 4px 10px; border-radius: 9999px; font-size: 0.65rem; font-weight: 800; }
+        .day-checkbox:checked + label { background-color: #2563eb; color: white; border-color: #2563eb; }
+        .staff-info { font-size: 11px; color: #475569; display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+        .coordinator-badge { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 6px; font-size: 9px; font-weight: bold; }
+        @media print { .no-print { display: none !important; } }
+        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #2563eb; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-3 md:p-6">
+
+    <div id="loader" class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="font-bold text-blue-600 italic">أهلاً يا أحمد، بنجهز الـ 31 عيادة... ☁️</div>
+    </div>
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 no-print bg-white p-5 rounded-3xl shadow-sm border border-slate-100 gap-4">
+            <div class="text-right">
+                <h1 class="text-2xl font-black text-slate-800">إدارة عيادات أحمد 👨‍⚕️</h1>
+                <p id="syncStatus" class="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    متصل بالسحابة ✅
+                </p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-left">
+                    <p id="todayDateDisplay" class="text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-2xl"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-2 mb-6 no-print">
+            <button onclick="switchTab('main')" id="tab-main" class="px-6 py-3 rounded-2xl font-bold transition-all bg-blue-600 text-white shadow-lg">قاعدة البيانات</button>
+            <button onclick="switchTab('planner')" id="tab-planner" class="px-6 py-3 rounded-2xl font-bold transition-all bg-white text-slate-600 border border-slate-200">المخطط الأسبوعي ✨</button>
+        </div>
+
+        <!-- Main Section -->
+        <div id="main-section">
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 no-print">
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <p class="text-slate-400 text-[10px] font-black mb-1 uppercase tracking-widest text-right">إجمالي العيادات</p>
+                    <h3 id="totalClinics" class="text-2xl font-black text-slate-800 text-right">0</h3>
+                </div>
+                <div class="bg-amber-50 p-5 rounded-3xl border border-amber-100">
+                    <p class="text-amber-500 text-[10px] font-black mb-1 uppercase tracking-widest text-right">عيادات VIP ⭐</p>
+                    <h3 id="vipCount" class="text-2xl font-black text-amber-600 text-right">0</h3>
+                </div>
+                <div class="bg-purple-50 p-5 rounded-3xl border border-purple-100">
+                    <p class="text-purple-500 text-[10px] font-black mb-1 uppercase tracking-widest text-right">عن طريق منسقة 📋</p>
+                    <h3 id="coordCount" class="text-2xl font-black text-purple-600 text-right">0</h3>
+                </div>
+                <div class="bg-blue-50 p-5 rounded-3xl border border-blue-100">
+                    <p class="text-blue-500 text-[10px] font-black mb-1 uppercase tracking-widest text-right">زيارات اليوم</p>
+                    <h3 id="todayClinicsCount" class="text-2xl font-black text-blue-600 text-right">0</h3>
+                </div>
+            </div>
+
+            <!-- Search & Actions -->
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 no-print">
+                <div class="flex-grow w-full relative">
+                    <input type="text" id="searchInput" oninput="window.renderTable()" placeholder="ابحث باسم العيادة، الدكتور، المنسقة، أو المنطقة..." class="w-full bg-white border border-slate-200 rounded-2xl py-4 pr-12 pl-4 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all font-bold text-right">
+                    <span class="absolute inset-y-0 right-4 flex items-center text-slate-400 text-xl">🔍</span>
+                </div>
+                <div class="flex gap-2 w-full md:w-auto">
+                    <button onclick="filterToday()" id="btnFilterToday" class="bg-white text-rose-600 border border-rose-200 px-5 py-4 rounded-2xl font-bold hover:bg-rose-50 transition-all text-sm whitespace-nowrap">عيادات اليوم</button>
+                    <button onclick="openModal()" class="flex-1 md:flex-none bg-blue-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">+ عيادة جديدة</button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-100 text-slate-400 text-[10px] font-black uppercase">
+                                <th class="p-5 w-12 text-center">#</th>
+                                <th class="p-5">العيادة والمنطقة</th>
+                                <th class="p-5">الطاقم الطبي والاتصال</th>
+                                <th class="p-5">المواعيد والساعات</th>
+                                <th class="p-5 text-center">آخر زيارة</th>
+                                <th class="p-5 text-center no-print">إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-50"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Planner Section -->
+        <div id="planner-section" class="hidden">
+            <div id="weeklyPlanGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="clinicModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50 no-print">
+        <div class="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h2 class="text-xl font-black text-slate-800">📋 تفاصيل العيادة والزيارة</h2>
+                <button onclick="closeModal()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <form id="clinicForm" class="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="editId">
+                
+                <!-- الأساسيات -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-black text-slate-400 mb-1 uppercase text-right">اسم العيادة</label>
+                        <input type="text" id="clinicName" required class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-right">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 mb-1 uppercase text-right">المنطقة</label>
+                        <input type="text" id="clinicArea" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-right">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 mb-1 uppercase text-right">تاريخ الزيارة</label>
+                        <input type="date" id="lastVisitDate" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold">
+                    </div>
+                </div>
+
+                <!-- الطاقم الطبي -->
+                <div class="p-6 bg-blue-50/50 rounded-3xl border border-blue-100 space-y-4">
+                    <h4 class="text-xs font-black text-blue-600 mb-2">الطاقم الطبي المباشر</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[9px] font-bold text-blue-400 mb-1">اسم الدكتور</label>
+                            <input type="text" id="doctorName" class="w-full p-3 bg-white border border-blue-100 rounded-xl font-bold text-right text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold text-blue-400 mb-1">اسم الأخصائية</label>
+                            <input type="text" id="specialistName" class="w-full p-3 bg-white border border-blue-100 rounded-xl font-bold text-right text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold text-blue-400 mb-1">اسم المنسقة</label>
+                            <input type="text" id="coordinatorName" class="w-full p-3 bg-white border border-blue-100 rounded-xl font-bold text-right text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold text-blue-400 mb-1">رقم الهاتف للاتصال</label>
+                            <input type="tel" id="clinicPhone" class="w-full p-3 bg-white border border-blue-100 rounded-xl font-bold text-left text-sm" placeholder="05xxxxxxx">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- المواعيد -->
+                <div class="p-6 bg-slate-50 rounded-3xl border border-slate-200 space-y-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-xs font-black text-slate-500">مواعيد وساعات الزيارة</h4>
+                        <div class="flex items-center gap-2">
+                            <label class="text-[10px] font-black text-purple-600">عن طريق منسقة؟</label>
+                            <input type="checkbox" id="viaCoordinator" class="w-4 h-4 accent-purple-600">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-[9px] font-bold text-slate-400 mb-1">من الساعة</label>
+                            <input type="time" id="timeFrom" class="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold text-slate-400 mb-1">إلى الساعة</label>
+                            <input type="time" id="timeTo" class="w-full p-3 bg-white border border-slate-200 rounded-xl font-bold">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
+                        <input type="checkbox" id="d-sat" value="السبت" class="hidden day-checkbox"><label for="d-sat" class="text-center py-2 border border-slate-200 rounded-xl cursor-pointer text-[10px] font-bold">السبت</label>
+                        <input type="checkbox" id="d-sun" value="الأحد" class="hidden day-checkbox"><label for="d-sun" class="text-center py-2 border border-slate-200 rounded-xl cursor-pointer text-[10px] font-bold">الأحد</label>
+                        <input type="checkbox" id="d-mon" value="الإثنين" class="hidden day-checkbox"><label for="d-mon" class="text-center py-2 border border-slate-200 rounded-xl cursor-pointer text-[10px] font-bold">الإثنين</label>
+                        <input type="checkbox" id="d-tue" value="الثلاثاء" class="hidden day-checkbox"><label for="d-tue" class="text-center py-2 border border-slate-200 rounded-xl cursor-pointer text-[10px] font-bold">الثلاثاء</label>
+                        <input type="checkbox" id="d-wed" value="الأربعاء" class="hidden day-checkbox"><label for="d-wed" class="text-center py-2 border border-slate-200 rounded-xl cursor-pointer text-[10px] font-bold">الأربعاء</label>
+                        <input type="checkbox" id="d-thu" value="الخميس" class="hidden day-checkbox"><label for="d-thu" class="text-center py-2 border border-slate-200 rounded-xl cursor-pointer text-[10px] font-bold">الخميس</label>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-5 bg-amber-50 rounded-3xl border border-amber-100">
+                    <p class="text-sm font-black text-amber-800">تمييز كـ عيادة VIP ⭐</p>
+                    <input type="checkbox" id="isPriority" class="w-6 h-6 accent-amber-500 cursor-pointer">
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 text-white py-5 rounded-[1.5rem] font-black text-lg shadow-xl shadow-blue-100">حفظ ومزامنة فورية 🚀</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase System -->
+    <script type="module">
+        import { doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        import { signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        // العيادات الـ 31 الأساسية كبيانات افتراضية لو السحابة فاضية
+        const initialClinics = [
+            "فيو", "ميسان", "العليا", "كوزموبروف", "رانس المحمدية", "توكير", "رفال", 
+            "تواصل مع لابوتيه", "رام النخيل", "ماي كلينك", "إدارة ريمين", "حاتم امان", 
+            "ريانه", "الأفضل", "نوفيللو", "برايت", "بروزون", "اليزي", "الثنايا البراقة", 
+            "بيليزا", "الزلال د عامر", "حياة المروج", "عيادات تيفانى الواحة", 
+            "عيادات ماكسيم", "عيادات لاينز", "عيادات برايت الياسمين", "عيادات لكجري", 
+            "افيلين", "عيادات ميام 1", "عيادات ميام 2", "ريفلكت"
+        ].map((name, i) => ({
+            id: `init_${i}`,
+            name: name,
+            area: name.includes("الياسمين") || name.includes("ماكسيم") ? "الياسمين" : "غير محدد",
+            specialistName: name === "حياة المروج" ? "تمارا" : (name === "عيادات لكجري" ? "ايه" : ""),
+            doctorName: "", coordinatorName: "", phone: "", visitDays: "-", 
+            timeFrom: "", timeTo: "", viaCoordinator: false, lastVisit: "", priority: false
+        }));
+
+        let clinics = [];
+
+        async function saveToCloud(data) {
+            if (!window.currentUser) return;
+            const docRef = doc(window.firebaseDB, 'artifacts', window.appId, 'users', window.currentUser.uid, 'clinics_data', 'main');
+            await setDoc(docRef, { clinics: data }, { merge: true });
+        }
+
+        onAuthStateChanged(window.firebaseAuth, async (user) => {
+            if (user) {
+                window.currentUser = user;
+                const docRef = doc(window.firebaseDB, 'artifacts', window.appId, 'users', user.uid, 'clinics_data', 'main');
+                
+                onSnapshot(docRef, (docSnap) => {
+                    document.getElementById('loader').style.display = 'none';
+                    if (docSnap.exists()) {
+                        clinics = docSnap.data().clinics || [];
+                    } else {
+                        // لو أول مرة يفتح، حمل الـ 31 عيادة
+                        clinics = initialClinics;
+                        saveToCloud(clinics);
+                    }
+                    window.renderTable();
+                });
+            } else {
+                signInAnonymously(window.firebaseAuth);
+            }
+        });
+
+        window.getClinics = () => clinics;
+        window.updateClinics = (newData) => { clinics = newData; saveToCloud(clinics); };
+    </script>
+
+    <script>
+        let isTodayFilterActive = false;
+
+        function switchTab(tab) {
+            document.getElementById('main-section').classList.toggle('hidden', tab !== 'main');
+            document.getElementById('planner-section').classList.toggle('hidden', tab !== 'planner');
+            if(tab === 'planner') generateWeeklyPlan();
+            
+            const btnMain = document.getElementById('tab-main');
+            const btnPlan = document.getElementById('tab-planner');
+            
+            if(tab === 'main') {
+                btnMain.className = "px-6 py-3 rounded-2xl font-bold transition-all bg-blue-600 text-white shadow-lg";
+                btnPlan.className = "px-6 py-3 rounded-2xl font-bold transition-all bg-white text-slate-600 border border-slate-200";
+            } else {
+                btnPlan.className = "px-6 py-3 rounded-2xl font-bold transition-all bg-blue-600 text-white shadow-lg";
+                btnMain.className = "px-6 py-3 rounded-2xl font-bold transition-all bg-white text-slate-600 border border-slate-200";
+            }
+        }
+
+        function filterToday() {
+            isTodayFilterActive = !isTodayFilterActive;
+            const btn = document.getElementById('btnFilterToday');
+            btn.className = isTodayFilterActive ? "bg-rose-600 text-white px-5 py-4 rounded-2xl font-bold" : "bg-white text-rose-600 border border-rose-200 px-5 py-4 rounded-2xl font-bold";
+            window.renderTable();
+        }
+
+        window.renderTable = () => {
+            const clinics = window.getClinics();
+            const tbody = document.getElementById('tableBody');
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const todayName = new Date().toLocaleDateString('ar-EG', { weekday: 'long' });
+            
+            tbody.innerHTML = '';
+            let list = [...clinics].sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
+
+            if(isTodayFilterActive) list = list.filter(c => c.visitDays && c.visitDays.includes(todayName));
+
+            list.forEach((c, i) => {
+                const searchContent = `${c.name} ${c.doctorName} ${c.specialistName} ${c.coordinatorName} ${c.area}`.toLowerCase();
+                if(term && !searchContent.includes(term)) return;
+                
+                const tr = document.createElement('tr');
+                tr.className = c.priority ? 'bg-amber-50/30' : 'hover:bg-slate-50 transition-colors';
+                
+                tr.innerHTML = `
+                    <td class="p-5 text-center text-[10px] font-bold text-slate-300">${i+1}</td>
+                    <td class="p-5">
+                        <div class="font-black text-slate-800 text-sm">${c.name} ${c.priority ? '⭐' : ''}</div>
+                        <div class="text-[9px] text-slate-400 font-bold mt-1">📍 ${c.area}</div>
+                    </td>
+                    <td class="p-5">
+                        <div class="space-y-1">
+                            ${c.doctorName ? `<div class="staff-info font-bold text-blue-700">👨‍⚕️ د. ${c.doctorName}</div>` : ''}
+                            ${c.specialistName ? `<div class="staff-info text-slate-600">👩‍⚕️ أخصائية: ${c.specialistName}</div>` : ''}
+                            ${c.coordinatorName ? `<div class="staff-info text-purple-600">📋 منسقة: ${c.coordinatorName}</div>` : ''}
+                            ${c.phone ? `<a href="tel:${c.phone}" class="staff-info text-emerald-600 font-black">📞 ${c.phone}</a>` : ''}
+                        </div>
+                    </td>
+                    <td class="p-5">
+                        <div class="text-[10px] font-black text-slate-700">${c.visitDays}</div>
+                        ${(c.timeFrom || c.timeTo) ? `<div class="text-[9px] text-blue-500 font-bold mt-1">🕒 ${c.timeFrom || '--'} : ${c.timeTo || '--'}</div>` : ''}
+                        ${c.viaCoordinator ? `<div class="mt-2"><span class="coordinator-badge">عن طريق المنسقة</span></div>` : ''}
+                    </td>
+                    <td class="p-5 text-center">
+                        <div class="text-[10px] font-black text-slate-600 mb-1">${c.lastVisit || '---'}</div>
+                        <span class="status-pill ${c.lastVisit ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                            ${c.lastVisit ? 'تمت' : 'مجدولة'}
+                        </span>
+                    </td>
+                    <td class="p-5 text-center no-print">
+                        <div class="flex gap-2 justify-center">
+                            <button onclick="editClinic('${c.id}')" class="w-9 h-9 flex items-center justify-center bg-white shadow-sm border border-slate-100 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all">✏️</button>
+                            <button onclick="deleteClinic('${c.id}')" class="w-9 h-9 flex items-center justify-center bg-white shadow-sm border border-slate-100 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all">🗑️</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            updateStats(clinics);
+        };
+
+        function updateStats(clinics) {
+            const todayName = new Date().toLocaleDateString('ar-EG', { weekday: 'long' });
+            document.getElementById('totalClinics').innerText = clinics.length;
+            document.getElementById('vipCount').innerText = clinics.filter(c => c.priority).length;
+            document.getElementById('coordCount').innerText = clinics.filter(c => c.viaCoordinator).length;
+            document.getElementById('todayClinicsCount').innerText = clinics.filter(c => c.visitDays && c.visitDays.includes(todayName)).length;
+        }
+
+        function openModal() {
+            document.getElementById('clinicForm').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('clinicModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('clinicModal').classList.add('hidden'); }
+
+        document.getElementById('clinicForm').onsubmit = (e) => {
+            e.preventDefault();
+            const clinics = window.getClinics();
+            const id = document.getElementById('editId').value || Date.now().toString();
+            const newData = {
+                id,
+                name: document.getElementById('clinicName').value,
+                area: document.getElementById('clinicArea').value || 'غير محدد',
+                doctorName: document.getElementById('doctorName').value,
+                specialistName: document.getElementById('specialistName').value,
+                coordinatorName: document.getElementById('coordinatorName').value,
+                phone: document.getElementById('clinicPhone').value,
+                visitDays: Array.from(document.querySelectorAll('.day-checkbox:checked')).map(cb => cb.value).join('، ') || '-',
+                timeFrom: document.getElementById('timeFrom').value,
+                timeTo: document.getElementById('timeTo').value,
+                viaCoordinator: document.getElementById('viaCoordinator').checked,
+                lastVisit: document.getElementById('lastVisitDate').value,
+                priority: document.getElementById('isPriority').checked
+            };
+            const idx = clinics.findIndex(c => c.id === id);
+            if(idx !== -1) clinics[idx] = newData; else clinics.unshift(newData);
+            window.updateClinics(clinics);
+            closeModal();
+        };
+
+        function editClinic(id) {
+            const c = window.getClinics().find(x => x.id === id);
+            document.getElementById('editId').value = c.id;
+            document.getElementById('clinicName').value = c.name;
+            document.getElementById('clinicArea').value = c.area;
+            document.getElementById('doctorName').value = c.doctorName || '';
+            document.getElementById('specialistName').value = c.specialistName || '';
+            document.getElementById('coordinatorName').value = c.coordinatorName || '';
+            document.getElementById('clinicPhone').value = c.phone || '';
+            document.getElementById('lastVisitDate').value = c.lastVisit || '';
+            document.getElementById('timeFrom').value = c.timeFrom || '';
+            document.getElementById('timeTo').value = c.timeTo || '';
+            document.getElementById('viaCoordinator').checked = c.viaCoordinator || false;
+            document.getElementById('isPriority').checked = c.priority;
+            document.querySelectorAll('.day-checkbox').forEach(cb => cb.checked = c.visitDays.includes(cb.value));
+            document.getElementById('clinicModal').classList.remove('hidden');
+        }
+
+        function deleteClinic(id) {
+            if(confirm('يا أحمد، هل أنت متأكد من حذف هذه العيادة؟')) {
+                window.updateClinics(window.getClinics().filter(c => c.id !== id));
+            }
+        }
+
+        function generateWeeklyPlan() {
+            const clinics = window.getClinics();
+            const container = document.getElementById('weeklyPlanGrid');
+            const sortedDays = ["السبت", "الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس"];
+            container.innerHTML = '';
+            sortedDays.forEach(day => {
+                const dayClinics = clinics.filter(c => c.visitDays.includes(day));
+                const card = document.createElement('div');
+                card.className = "bg-white p-6 rounded-3xl shadow-sm border border-slate-100";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-5 pb-3 border-b border-slate-50">
+                        <h4 class="font-black text-blue-600">${day}</h4>
+                        <span class="text-[10px] font-black px-2 py-1 bg-blue-50 text-blue-600 rounded-lg">${dayClinics.length}</span>
+                    </div>
+                    <ul class="space-y-3">
+                        ${dayClinics.length > 0 ? dayClinics.map(c => `
+                            <li class="flex flex-col gap-1 p-2 rounded-xl hover:bg-slate-50">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-slate-800">${c.name}</span>
+                                    ${c.priority ? '⭐' : ''}
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[9px] text-slate-400">📍 ${c.area}</span>
+                                    <span class="text-[8px] font-black text-blue-500">${c.timeFrom || ''} - ${c.timeTo || ''}</span>
+                                </div>
+                                ${c.viaCoordinator ? '<span class="text-[8px] font-black text-purple-500 italic">بواسطة المنسقة</span>' : ''}
+                            </li>
+                        `).join('') : '<li class="text-xs text-slate-300 italic text-center py-4">لا يوجد مواعد</li>'}
+                    </ul>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        window.onload = () => {
+            document.getElementById('todayDateDisplay').innerText = new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
+        };
+    </script>
+</body>
+</html>
