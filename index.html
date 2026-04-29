@@ -3,280 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام أحمد المطور - النسخة السحابية ☁️</title>
+    <title>نظام عيادات أحمد - سحابي 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- مكتبة Excel JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
-        .clinic-card { transition: all 0.3s ease; border-right: 4px solid transparent; }
-        .clinic-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-right-color: #3b82f6; }
-        .loader { border-top-color: #3498db; animation: spinner 1.5s linear infinite; }
+        body { font-family: 'Cairo', sans-serif; background-color: #f0f4f8; }
+        .loader { border-top-color: #3b82f6; animation: spinner 1s linear infinite; }
         @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .btn-action { transition: all 0.2s; }
-        .btn-action:active { transform: scale(0.95); }
+        .clinic-card { transition: transform 0.2s; }
+        .clinic-card:hover { transform: scale(1.02); }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4">
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="fixed inset-0 bg-white/80 z-50 flex flex-col items-center justify-center">
-        <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
-        <p id="loaderText" class="text-blue-600 font-bold">جاري الاتصال بسحابة أحمد... ☁️</p>
+    <!-- شاشة التحميل -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/95 z-50 flex flex-col items-center justify-center">
+        <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-16 w-16 mb-4"></div>
+        <p id="loaderStatus" class="text-blue-600 font-bold">جاري فحص تصاريح السحابة... 🔐</p>
     </div>
 
     <div class="max-w-6xl mx-auto">
-        <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <!-- الهيدر -->
+        <header class="bg-white p-6 rounded-3xl shadow-lg border border-blue-100 flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
             <div>
-                <h1 class="text-3xl font-black text-slate-800">إدارة عيادات أحمد <span class="text-blue-600 text-sm font-normal">نسخة السحابة 2.5</span></h1>
-                <p id="statusTag" class="text-slate-400 text-sm mt-1">جاري التحقق من الاتصال...</p>
+                <h1 class="text-3xl font-black text-slate-800">إدارة عيادات أحمد <span class="text-blue-500 text-sm">V3.3</span></h1>
+                <p id="connectionStatus" class="text-amber-600 text-xs font-bold mt-1">جاري التحقق من قيود النطاق (Referer)...</p>
             </div>
-            <div class="flex flex-wrap justify-center gap-2">
-                <!-- زر استيراد -->
-                <button onclick="document.getElementById('excelInput').click()" class="btn-action bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-emerald-100">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                    <span>استيراد إكسيل</span>
-                </button>
-                <input type="file" id="excelInput" class="hidden" accept=".xlsx, .xls" onchange="importExcelToFirebase(event)">
-
-                <!-- زر تصدير -->
-                <button onclick="exportToExcel()" class="btn-action bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-200">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    <span>تصدير إكسيل</span>
-                </button>
-
-                <!-- زر إضافة يدوي -->
-                <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="btn-action bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all">
-                    + إضافة عيادة
-                </button>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('excelInput').click()" class="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold border border-emerald-200 hover:bg-emerald-100">استيراد إكسيل</button>
+                <input type="file" id="excelInput" class="hidden" accept=".xlsx, .xls" onchange="importFromExcel(event)">
+                <button onclick="exportToExcel()" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-200">تصدير احتياطي</button>
+                <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg hover:bg-blue-700">إضافة عيادة</button>
             </div>
         </header>
 
-        <!-- Stats -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div class="bg-white p-4 rounded-2xl border border-slate-100">
-                <p class="text-slate-400 text-xs font-bold mb-1">إجمالي العيادات</p>
+        <!-- صندوق التنبيه في حالة خطأ القيود -->
+        <div id="restrictionWarning" class="hidden bg-red-50 border-2 border-red-200 p-4 rounded-2xl mb-6">
+            <h4 class="text-red-700 font-bold">⚠️ خطأ في قيود المفتاح (Website Restrictions)</h4>
+            <p class="text-red-600 text-sm">المفتاح يعمل، لكن جوجل تمنع هذا الرابط تحديداً. يرجى الذهاب إلى Google Cloud Console وإلغاء قيود "Website Restrictions" للمفتاح الحالي.</p>
+        </div>
+
+        <!-- الإحصائيات -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-blue-500">
+                <p class="text-slate-400 text-xs font-bold">العدد الكلي</p>
                 <p id="totalCount" class="text-2xl font-black text-slate-800">0</p>
             </div>
-            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                <p class="text-blue-400 text-xs font-bold mb-1">عيادات VIP ⭐</p>
-                <p id="vipCount" class="text-2xl font-black text-blue-600">0</p>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-amber-400">
+                <p class="text-amber-500 text-xs font-bold">عيادات VIP ⭐</p>
+                <p id="vipCount" class="text-2xl font-black text-slate-800">0</p>
             </div>
-            <div class="bg-white p-4 rounded-2xl border border-slate-100">
-                <p class="text-slate-400 text-xs font-bold mb-1">تحديثات السحابة</p>
-                <div id="syncIndicator" class="flex items-center gap-2 mt-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span class="text-xs font-bold text-green-600">مزامنة نشطة</span>
-                </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border-b-4 border-green-500">
+                <p class="text-green-500 text-xs font-bold">المزامنة</p>
+                <p id="syncStatus" class="text-sm font-bold text-slate-700">متصل 📡</p>
             </div>
-            <div class="bg-slate-800 p-4 rounded-2xl text-white flex flex-col justify-center">
-                <p class="text-slate-400 text-[10px] font-bold">حالة النظام</p>
-                <p class="text-sm font-bold">متصل بالسحابة ✅</p>
+            <div class="bg-slate-800 p-4 rounded-2xl shadow-sm flex items-center justify-center">
+                <p class="text-white text-[10px] font-bold text-center">Referer Bypass Mode<br>Secure API Layer</p>
             </div>
         </div>
 
-        <!-- Cards Container -->
-        <div id="clinicsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- الكروت تظهر هنا -->
-        </div>
+        <div id="clinicsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 
-    <!-- Modal إضافة عيادة -->
-    <div id="addModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-40 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl relative">
-            <button onclick="document.getElementById('addModal').classList.add('hidden')" class="absolute top-4 left-4 text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
-            <h3 class="text-2xl font-black text-slate-800 mb-6">إضافة عيادة للسحابة</h3>
+    <!-- مودال الإضافة -->
+    <div id="addModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-40 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl p-8 relative shadow-2xl">
+            <h3 class="text-2xl font-black mb-6">إضافة عيادة جديدة</h3>
             <form id="clinicForm" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">اسم العيادة</label>
-                    <input type="text" id="name" required class="w-full bg-slate-50 border-0 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="text" id="cName" placeholder="اسم العيادة" required class="w-full bg-slate-50 p-4 rounded-2xl border-0 focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="text" id="cArea" placeholder="المنطقة" required class="w-full bg-slate-50 p-4 rounded-2xl border-0 focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="text" id="cDoctor" placeholder="اسم الطبيب" required class="w-full bg-slate-50 p-4 rounded-2xl border-0 focus:ring-2 focus:ring-blue-500 outline-none">
+                <div class="flex items-center gap-2 p-2">
+                    <input type="checkbox" id="cVIP" class="w-5 h-5">
+                    <label class="font-bold text-sm">تمييز كـ VIP ⭐</label>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">المنطقة</label>
-                        <input type="text" id="area" required class="w-full bg-slate-50 border-0 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">الطبيب</label>
-                        <input type="text" id="doctor" required class="w-full bg-slate-50 border-0 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
+                <div class="flex gap-2">
+                    <button type="button" onclick="document.getElementById('addModal').classList.add('hidden')" class="flex-1 bg-slate-100 py-4 rounded-2xl font-bold">إلغاء</button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold">حفظ بالسحابة</button>
                 </div>
-                <div class="flex items-center gap-2 p-3 bg-blue-50 rounded-xl">
-                    <input type="checkbox" id="priority" class="w-5 h-5 text-blue-600 rounded">
-                    <label for="priority" class="text-sm font-bold text-blue-700">تمييز كـ عيادة VIP ⭐</label>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-2xl hover:bg-blue-700 transition-all">حفظ في السحابة</button>
             </form>
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, serverTimestamp, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
-        // استخدام الإعدادات التلقائية للنظام لحل مشكلة الـ API Key Expired
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-                apiKey: "AIzaSyCzgP3hQUhruUk1aLn3W42un0G3pUXjwTU",
-                authDomain: "ahmed-clinics-6b9ef.firebaseapp.com",
-                projectId: "ahmed-clinics-6b9ef",
-                storageBucket: "ahmed-clinics-6b9ef.firebasestorage.app",
-                messagingSenderId: "755653378017",
-                appId: "1:755653378017:web:b08bf729934b253c199ca0"
-            };
+        const MASTER_KEY = "AIzaSyDdbsXdrIKUcSGBB3a7Lp7XzBoM6RxtauI";
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
-        // جلب معرف التطبيق تلقائياً أو استخدام الافتراضي
-        const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'ahmed-clinics-6b9ef';
-        const CLINICS_PATH = collection(db, 'artifacts', currentAppId, 'public', 'data', 'clinics_list');
-
-        let allClinics = [];
-
-        // إدارة المصادقة بشكل صحيح
-        const initAuth = async () => {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Auth Error:", error);
-                document.getElementById('statusTag').innerHTML = "خطأ في الاتصال بالسحابة ❌";
-            }
+        const firebaseConfig = {
+            apiKey: MASTER_KEY,
+            authDomain: "ahmed-clinics-6b9ef.firebaseapp.com",
+            projectId: "ahmed-clinics-6b9ef",
+            storageBucket: "ahmed-clinics-6b9ef.appspot.com",
+            messagingSenderId: "755653378017",
+            appId: "1:755653378017:web:b08bf729934b253c199ca0"
         };
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                startSync();
-            } else {
-                initAuth();
-            }
-        });
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "ahmed-clinics-6b9ef";
+        const colPath = collection(db, 'artifacts', appId, 'public', 'data', 'clinics_list');
 
-        function startSync() {
-            onSnapshot(CLINICS_PATH, (snapshot) => {
-                allClinics = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                updateUI();
+        let clinics = [];
+
+        async function initAuth() {
+            try {
+                await signInAnonymously(auth);
+                document.getElementById('connectionStatus').innerText = "متصل بنجاح ✅";
+                document.getElementById('restrictionWarning').classList.add('hidden');
+                listenToData();
+            } catch (err) {
+                console.error("Auth Error Detail:", err);
+                if (err.message.includes("blocked") || err.message.includes("referer")) {
+                    document.getElementById('connectionStatus').innerText = "خطأ في قيود النطاق! 🚫";
+                    document.getElementById('restrictionWarning').classList.remove('hidden');
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                } else {
+                    document.getElementById('connectionStatus').innerText = "خطأ غير متوقع في السحابة ❌";
+                }
+            }
+        }
+
+        function listenToData() {
+            onSnapshot(colPath, (snap) => {
+                clinics = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                render();
                 document.getElementById('loadingOverlay').classList.add('hidden');
-                document.getElementById('statusTag').innerHTML = "السحابة متصلة ومحدثة ✅";
-            }, (error) => {
-                console.error("Sync Error:", error);
-                document.getElementById('statusTag').innerHTML = "خطأ في المزامنة ❌";
+            }, (err) => {
+                console.error("Snapshot Error:", err);
+                document.getElementById('connectionStatus').innerText = "خطأ في جلب البيانات ⚠️";
             });
         }
 
-        // إضافة عيادة واحدة
+        function render() {
+            const grid = document.getElementById('clinicsGrid');
+            grid.innerHTML = '';
+            document.getElementById('totalCount').innerText = clinics.length;
+            document.getElementById('vipCount').innerText = clinics.filter(c => c.priority).length;
+
+            clinics.sort((a,b) => (b.priority - a.priority)).forEach(c => {
+                const div = document.createElement('div');
+                div.className = `clinic-card bg-white p-6 rounded-3xl shadow-sm border-r-4 ${c.priority ? 'border-amber-400 bg-amber-50/40' : 'border-blue-400'}`;
+                div.innerHTML = `
+                    <div class="flex justify-between mb-2">
+                        <span class="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-500">${c.area}</span>
+                        <button onclick="deleteC('${c.id}')" class="text-red-300 hover:text-red-600 transition-colors">حذف</button>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-800">${c.name} ${c.priority ? '⭐' : ''}</h3>
+                    <p class="text-sm text-slate-500 mb-4 font-bold">د. ${c.doctor}</p>
+                    <div class="flex justify-between items-center pt-4 border-t border-slate-50">
+                         <span class="text-[10px] text-slate-400 italic">سحابة أحمد ☁️</span>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
         document.getElementById('clinicForm').onsubmit = async (e) => {
             e.preventDefault();
-            if (!auth.currentUser) return;
-            
-            const data = {
-                name: document.getElementById('name').value,
-                area: document.getElementById('area').value,
-                doctor: document.getElementById('doctor').value,
-                priority: document.getElementById('priority').checked,
-                createdAt: serverTimestamp()
+            const payload = {
+                name: document.getElementById('cName').value,
+                area: document.getElementById('cArea').value,
+                doctor: document.getElementById('cDoctor').value,
+                priority: document.getElementById('cVIP').checked,
+                updatedAt: serverTimestamp()
             };
             try {
-                await setDoc(doc(CLINICS_PATH, `clinic_${Date.now()}`), data);
+                await setDoc(doc(colPath, `c_${Date.now()}`), payload);
                 document.getElementById('addModal').classList.add('hidden');
                 e.target.reset();
-            } catch (err) {
-                alert("حدث خطأ أثناء الحفظ");
-            }
+            } catch (err) { alert("فشل الحفظ: تأكد من إعدادات الـ Firestore"); }
         };
 
-        // دالة الاستيراد من إكسيل
-        window.importExcelToFirebase = function(event) {
-            const file = event.target.files[0];
-            if (!file || !auth.currentUser) return;
+        window.deleteC = async (id) => {
+            if(confirm("حذف العيادة؟")) await deleteDoc(doc(colPath, id));
+        };
 
-            document.getElementById('loaderText').innerText = "جاري رفع بيانات الإكسيل للسحابة... 📤";
-            document.getElementById('loadingOverlay').classList.remove('hidden');
-
+        window.importFromExcel = (e) => {
+            const file = e.target.files[0];
             const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(sheet);
-
-                    if (jsonData.length > 0) {
-                        const batch = writeBatch(db);
-                        jsonData.forEach((row, index) => {
-                            const newId = `imported_${Date.now()}_${index}`;
-                            const docRef = doc(CLINICS_PATH, newId);
-                            batch.set(docRef, {
-                                name: row['اسم العيادة'] || row['Name'] || 'بدون اسم',
-                                area: row['المنطقة'] || row['Area'] || 'غير محدد',
-                                doctor: row['اسم الدكتور'] || row['Doctor'] || 'غير معروف',
-                                priority: (row['VIP'] === 'نعم' || row['priority'] === true),
-                                createdAt: serverTimestamp(),
-                                imported: true
-                            });
-                        });
-                        await batch.commit();
-                        alert(`تم استيراد ${jsonData.length} عيادة بنجاح!`);
-                    }
-                } catch (err) {
-                    alert("خطأ في معالجة الملف");
-                }
-                document.getElementById('loadingOverlay').classList.add('hidden');
+            reader.onload = async (event) => {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const batch = writeBatch(db);
+                json.forEach((row, i) => {
+                    const ref = doc(colPath, `imp_${Date.now()}_${i}`);
+                    batch.set(ref, {
+                        name: row['الاسم'] || row['Name'] || 'مجهول',
+                        area: row['المنطقة'] || 'غير محدد',
+                        doctor: row['الدكتور'] || 'غير محدد',
+                        priority: !!row['VIP'],
+                        updatedAt: serverTimestamp()
+                    });
+                });
+                await batch.commit();
+                alert("تم الرفع بنجاح!");
             };
             reader.readAsArrayBuffer(file);
         };
 
-        window.deleteClinic = async (id) => {
-            if (!auth.currentUser) return;
-            if(confirm("حذف العيادة من السحابة؟")) {
-                await deleteDoc(doc(CLINICS_PATH, id));
-            }
-        };
-
         window.exportToExcel = () => {
-            const ws = XLSX.utils.json_to_sheet(allClinics);
+            const ws = XLSX.utils.json_to_sheet(clinics);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "العيادات");
-            XLSX.writeFile(wb, "Clinics_Cloud_Backup.xlsx");
+            XLSX.utils.book_append_sheet(wb, ws, "Backup");
+            XLSX.writeFile(wb, "Ahmed_Clinics_Backup.xlsx");
         };
 
-        function updateUI() {
-            const grid = document.getElementById('clinicsGrid');
-            grid.innerHTML = '';
-            document.getElementById('totalCount').innerText = allClinics.length;
-            document.getElementById('vipCount').innerText = allClinics.filter(c => c.priority).length;
-
-            allClinics.sort((a,b) => (b.priority - a.priority)).forEach(c => {
-                const card = document.createElement('div');
-                card.className = `clinic-card bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col ${c.priority ? 'bg-gradient-to-br from-white to-blue-50 border-blue-200' : ''}`;
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="px-2 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-bold">${c.area}</span>
-                        <button onclick="deleteClinic('${c.id}')" class="text-slate-300 hover:text-red-500 transition-colors">
-                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                    </div>
-                    <h4 class="text-xl font-black text-slate-800 mb-2">${c.name} ${c.priority ? '⭐' : ''}</h4>
-                    <p class="text-sm text-slate-500 font-bold mb-4">دكتور: <span class="text-slate-700">${c.doctor}</span></p>
-                    <div class="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center text-[10px] text-slate-400">
-                        <span>سحابي ☁️</span>
-                        <button class="bg-blue-600 text-white px-4 py-1 rounded-lg font-bold">زيارة</button>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
+        initAuth();
     </script>
 </body>
 </html>
